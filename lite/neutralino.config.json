@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
+  "applicationId": "co.polyhedra.modcut",
+  "version": "1.1.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/resources/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "one-time",
+  "dataLocation": "system",
+  "logging": { "enabled": false, "writeToLogFile": false },
+  "nativeAllowList": ["app.*", "os.*", "filesystem.*", "storage.*", "window.*", "events.*"],
+  "globalVariables": {},
+  "modes": {
+    "window": {
+      "title": "ModCut",
+      "width": 1500, "height": 940, "minWidth": 1100, "minHeight": 700,
+      "center": true, "resizable": true, "maximize": false,
+      "icon": "/resources/icon.png",
+      "enableInspector": false, "borderless": false, "alwaysOnTop": false,
+      "exitProcessOnClose": true
+    },
+    "cloud": { "nativeAllowList": ["app.*", "os.*", "filesystem.*", "storage.*", "events.*"] }
+  },
+  "cli": {
+    "binaryName": "ModCut",
+    "resourcesPath": "/resources/",
+    "extensionsPath": "/extensions/",
+    "clientLibrary": "/resources/neutralino.js",
+    "binaryVersion": "6.5.0",
+    "clientVersion": "6.5.0"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+app/bundle.js
+lite/bin/
+lite/resources/
+lite/dist/
+lite/.storage/
+*.log

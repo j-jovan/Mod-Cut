@@ -1,0 +1,77 @@
+{
+  "name": "modcut",
+  "version": "1.1.0",
+  "description": "Scale and cut 3D models into printable modules",
+  "main": "main.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "electron .",
+    "build:exe": "sh lite/build.sh"
+  },
+  "keywords": [],
+  "author": "Jovan Jovanović",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@neutralinojs/neu": "^11.8.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.2",
+    "fflate": "^0.8.3",
+    "manifold-3d": "^3.5.4",
+    "occt-import-js": "^0.0.23",
+    "playwright-core": "^1.63.0",
+    "postject": "^1.0.0-alpha.6",
+    "resedit": "^2.0.3",
+    "three": "^0.186.1"
+  },
+  "productName": "ModCut",
+  "build": {
+    "appId": "co.polyhedra.modcut",
+    "productName": "ModCut",
+    "copyright": "ModCut",
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*"
+    ],
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false,
+      "icon": "icon.ico"
+    },
+    "portable": {
+      "artifactName": "ModCut-${version}-portable.exe"
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "stl",
+          "3mf",
+          "step",
+          "stp"
+        ],
+        "name": "3D model",
+        "role": "Viewer"
+      }
+    ],
+    "afterPack": "./afterPack.cjs"
+  }
+}

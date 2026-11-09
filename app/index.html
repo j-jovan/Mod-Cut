@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ModCut</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; script-src 'self' app: 'wasm-unsafe-eval'; worker-src 'self' app: blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' app: data: blob:">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand"><span class="logo"></span><b>Mod</b>Cut</div>
+  <button id="btnOpen" class="btn"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Open model</button>
+  <div id="fileInfo" class="fileinfo">No model loaded</div>
+  <div class="spacer"></div>
+  <button id="printerChip" class="chip" title="Change printer / build volume">
+    <svg viewBox="0 0 24 24"><path d="M4 18h16M6 18V6h12v12M9 14h6"/></svg>
+    <span id="printerName">Printer</span><span id="printerDims" class="dim"></span>
+  </button>
+</header>
+
+<div id="layout">
+  <!-- LEFT: settings -->
+  <aside id="left">
+    <section class="panel" id="pModel">
+      <h3><span class="num">1</span>Model</h3>
+      <div id="modelStats" class="stats muted">Open or drop a file (STL, OBJ, 3MF, PLY, GLB/GLTF, FBX, AMF, VRML, STEP, IGES).</div>
+    </section>
+
+    <section class="panel" id="pScale">
+      <h3><span class="num">2</span>Scale &amp; orientation</h3>
+      <div class="row">
+        <label>File units</label>
+        <select id="units"><option value="1">mm</option><option value="10">cm</option><option value="1000">m</option><option value="25.4">inch</option></select>
+      </div>
+      <div class="row">
+        <label>Scale</label>
+        <div class="inline"><input id="scalePct" type="number" step="1" min="0.01" value="100"><span class="suffix">%</span></div>
+        <div class="seg small" id="scalePresets"><button data-s="50">50</button><button data-s="100">100</button><button data-s="200">200</button><button data-s="500">500</button></div>
+      </div>
+      <div class="sizegrid">
+        <div><span class="ax x">X</span><input id="sizeX" type="number" step="0.1"></div>
+        <div><span class="ax y">Y</span><input id="sizeY" type="number" step="0.1"></div>
+        <div><span class="ax z">Z</span><input id="sizeZ" type="number" step="0.1"></div>
+        <button id="lockRatio" class="iconbtn on" title="Keep proportions"><svg viewBox="0 0 24 24"><path d="M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z"/></svg></button>
+      </div>
+      <div class="hint">Type a target size (mm) on any axis; with the lock on, the others follow.</div>
+      <div class="row">
+        <label>Rotate 90°</label>
+        <div class="seg" id="rotBtns">
+          <button data-r="x" class="x">X</button><button data-r="y" class="y">Y</button><button data-r="z" class="z">Z</button>
+          <button id="rotReset" title="Reset orientation">↺</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Mirror</label>
+        <div class="seg" id="mirBtns"><button data-m="0" class="x">X</button><button data-m="1" class="y">Y</button><button data-m="2" class="z">Z</button></div>
+      </div>
+    </section>
+
+    <section class="panel" id="pCut">
+      <h3><span class="num">3</span>Cut layout</h3>
+      <div class="row">
+        <label>Layout</label>
+        <div class="seg" id="layoutMode"><button data-mode="auto" class="on">Auto (fewest parts)</button><button data-mode="manual">Manual</button></div>
+      </div>
+      <div class="row">
+        <label title="Parts are kept this much smaller than the build plate">Safety margin</label>
+        <div class="inline"><input id="margin" type="number" step="1" min="0" value="5"><span class="suffix">mm</span></div>
+      </div>
+      <label class="check"><input type="checkbox" id="allowRotate" checked> Parts may be rotated to fit the plate</label>
+      <label class="check"><input type="checkbox" id="allowZ" checked> Allow horizontal (Z) cuts</label>
+      <div class="countgrid">
+        <div><span class="ax x">X</span><button class="step" data-ax="0" data-d="-1">−</button><b id="cntX">1</b><button class="step" data-ax="0" data-d="1">+</button></div>
+        <div><span class="ax y">Y</span><button class="step" data-ax="1" data-d="-1">−</button><b id="cntY">1</b><button class="step" data-ax="1" data-d="1">+</button></div>
+        <div><span class="ax z">Z</span><button class="step" data-ax="2" data-d="-1">−</button><b id="cntZ">1</b><button class="step" data-ax="2" data-d="1">+</button></div>
+      </div>
+      <div id="cutList" class="cutlist"></div>
+      <div class="hint">Drag the coloured planes in the 3D view to move a cut. <button id="btnEven" class="link">Re-space evenly</button></div>
+      <div id="layoutSummary" class="summary"></div>
+    </section>
+
+    <section class="panel" id="pConn">
+      <h3><span class="num">4</span>Connectors</h3>
+      <div class="seg wide" id="connType">
+        <button data-c="none">None</button><button data-c="dowel" class="on" title="Holes on both sides + printed dowel pins">Dowels</button><button data-c="peg" title="Peg on one side, socket on the other">Pegs</button>
+      </div>
+      <div id="connOpts">
+        <div class="grid2">
+          <label>Diameter<div class="inline"><input id="cDia" type="number" step="0.5" min="1" value="6"><span class="suffix">mm</span></div></label>
+          <label>Depth<div class="inline"><input id="cDepth" type="number" step="1" min="2" value="12"><span class="suffix">mm</span></div></label>
+          <label>Clearance<div class="inline"><input id="cTol" type="number" step="0.05" min="0" value="0.2"><span class="suffix">mm</span></div></label>
+          <label>Min. wall<div class="inline"><input id="cWall" type="number" step="0.5" min="0.5" value="2"><span class="suffix">mm</span></div></label>
+          <label>Max per face<div class="inline"><input id="cMax" type="number" step="1" min="1" max="12" value="3"></div></label>
+        </div>
+        <div class="hint" id="connHint"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="pOut">
+      <h3><span class="num">5</span>Output &amp; estimate</h3>
+      <div class="row">
+        <label>Orientation</label>
+        <select id="orient">
+          <option value="auto" selected>Auto: least supports</option>
+          <option value="fit">Rotate only to fit plate</option>
+          <option value="flat">Flattest (lowest height)</option>
+          <option value="keep">Keep as modelled</option>
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" id="sepIslands"> Split disconnected pieces into separate files</label>
+      <label class="check"><input type="checkbox" id="expPlates" checked> Also export packed print plates</label>
+      <div class="grid2">
+        <label>Material<select id="material"></select></label>
+        <label>Infill<div class="inline"><input id="infill" type="number" min="0" max="100" step="1" value="2"><span class="suffix">%</span></div></label>
+        <label>Price / kg<div class="inline"><input id="price" type="number" min="0" step="1" value="25"><span class="suffix" id="cur">€</span></div></label>
+        <label>File name<input id="baseName" type="text" placeholder="model"></label>
+      </div>
+    </section>
+    <div class="leftfoot">
+      <button id="btnPreview" class="btn primary big" disabled>Preview cut</button>
+    </div>
+  </aside>
+
+  <!-- CENTER: viewport -->
+  <main id="viewport">
+    <canvas id="c3d"></canvas>
+    <div id="dropHint" class="drop"><div><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg><p>Drop a 3D file here</p><span>or use <b>Open model</b></span></div></div>
+    <div class="vtools">
+      <button data-view="iso" title="Iso view">Iso</button>
+      <button data-view="front" title="Front">Front</button>
+      <button data-view="right" title="Right">Side</button>
+      <button data-view="top" title="Top">Top</button>
+      <span class="sep"></span>
+      <button id="tWire" title="Wireframe">Wire</button>
+      <button id="tPlate" class="on" title="Show build volume">Build vol.</button>
+    </div>
+    <div id="previewBar" class="previewbar hidden">
+      <div class="pv-left">
+        <span class="badge">Preview</span>
+        <div class="seg" id="viewMode"><button data-v="explode" class="on">Exploded</button><button data-v="layout">Print layout</button><button data-v="single">Single part</button></div>
+        <label id="explodeWrap">Explode <input id="explode" type="range" min="0" max="100" value="35"></label>
+        <label id="supWrap" class="check hidden"><input type="checkbox" id="showSup" checked> Supports</label>
+        <button id="btnFil" class="btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v5.5M18.9 16 14 13.2M5.1 16 10 13.2"/></svg>Filament estimate</button>
+      </div>
+      <div class="pv-right">
+        <button id="btnBack" class="btn">← Edit cuts</button>
+        <button id="btnExport" class="btn primary">Accept &amp; export</button>
+      </div>
+    </div>
+    <div id="busy" class="busy hidden"><div class="spinner"></div><div><b id="busyText">Working…</b><div class="bar"><i id="busyBar"></i></div></div></div>
+    <div id="toast" class="toast hidden"></div>
+    <div class="legend"><span class="x">X</span><span class="y">Y</span><span class="z">Z</span></div>
+  </main>
+
+  <!-- RIGHT: parts -->
+  <aside id="right" class="hidden">
+    <h3>Parts <span id="partCount" class="pill"></span></h3>
+    <div id="partTotals" class="totals"></div>
+    <div id="warnings"></div>
+    <div id="partList" class="partlist"></div>
+  </aside>
+</div>
+
+<!-- Printer dialog -->
+<div id="printerModal" class="modal hidden">
+  <div class="dialog">
+    <h2>What printer are you cutting for?</h2>
+    <p class="muted">Parts will be sized to fit this build volume. You can change it any time from the top bar.</p>
+    <div class="row"><label>Preset</label><select id="pPreset"></select></div>
+    <div class="row"><label>Name</label><input id="pName" type="text"></div>
+    <div class="sizegrid three">
+      <div><span class="ax x">X</span><input id="pX" type="number" step="0.1" min="10"></div>
+      <div><span class="ax y">Y</span><input id="pY" type="number" step="0.1" min="10"></div>
+      <div><span class="ax z">Z</span><input id="pZ" type="number" step="0.1" min="10"></div>
+    </div>
+    <div class="row"><label>Technology</label><div class="seg" id="pTech"><button data-t="fdm" class="on">FDM (filament)</button><button data-t="resin">Resin (SLA/MSLA)</button></div></div>
+    <p class="hint">Preset dimensions are manufacturer specs — check them against your printer and slicer profile.</p>
+    <div class="dlgfoot">
+      <button id="pDelete" class="btn ghost">Delete saved</button>
+      <span class="spacer"></span>
+      <button id="pCancel" class="btn">Cancel</button>
+      <button id="pSave" class="btn primary">Use this printer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Filament estimate dialog -->
+<div id="filModal" class="modal hidden">
+  <div class="dialog wide">
+    <h2>Filament estimate</h2>
+    <p class="muted" id="filSub"></p>
+    <div class="filgrid">
+      <label>Infill<div class="inline"><input id="fInfill" type="number" min="0" max="100" step="1" value="2"><span class="suffix">%</span></div></label>
+      <label>Pattern<select id="fPattern"><option value="rectilinear">Rectilinear</option><option value="grid">Grid</option><option value="gyroid">Gyroid</option><option value="honeycomb">Honeycomb</option><option value="cubic">Cubic</option><option value="lightning">Lightning</option></select></label>
+      <label>Supports<select id="fSup"><option value="1">On (everywhere)</option><option value="0">Off</option></select></label>
+      <label>Support density<div class="inline"><input id="fSupD" type="number" min="5" max="100" step="1" value="15"><span class="suffix">%</span></div></label>
+      <label title="Same as the slicer setting: surfaces flatter than this angle (measured from horizontal) get support. Higher = more support.">Overhang threshold<div class="inline"><input id="fAngle" type="number" min="20" max="80" step="5" value="45"><span class="suffix">°</span></div></label>
+      <label>Walls<div class="inline"><input id="fWalls" type="number" min="1" max="10" step="1" value="2"></div></label>
+      <label>Line width<div class="inline"><input id="fLine" type="number" min="0.2" max="1.2" step="0.05" value="0.45"><span class="suffix">mm</span></div></label>
+      <label>Filament Ø<select id="fDia"><option value="1.75">1.75 mm</option><option value="2.85">2.85 mm</option></select></label>
+    </div>
+    <div id="filResult"></div>
+    <div class="dlgfoot"><span class="hint" style="margin:0">Estimate from part geometry; your slicer will differ slightly.</span><span class="spacer"></span><button id="filCopy" class="btn">Copy table</button><button id="filClose" class="btn primary">Close</button></div>
+  </div>
+</div>
+
+<!-- Export done dialog -->
+<div id="doneModal" class="modal hidden">
+  <div class="dialog small">
+    <h2>Export complete</h2>
+    <p id="doneText"></p>
+    <div class="dlgfoot"><span class="spacer"></span><button id="doneOpen" class="btn">Open folder</button><button id="doneClose" class="btn primary">Done</button></div>
+  </div>
+</div>
+
+<script src="bundle.js"></script>
+</body>
+</html>
