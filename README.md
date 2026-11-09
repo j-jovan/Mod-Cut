@@ -18,7 +18,7 @@ Scale a 3D model and cut it into modules that fit your printer's build plate, in
 
 ## Download
 
-Get `ModCut.exe` from [Releases](../../releases). It's a single 12 MB file with nothing to install. It runs on Windows 10/11 and uses the Edge WebView2 runtime that ships with Windows.
+**[Download ModCut.exe](https://github.com/j-jovan/mod-cut/raw/main/release/ModCut.exe)**. It's a single 12 MB file with nothing to install. It runs on Windows 10/11 and uses the Edge WebView2 runtime that ships with Windows.
 It isn't code-signed, so on first launch choose **More info → Run anyway**.
 
 ## Build
